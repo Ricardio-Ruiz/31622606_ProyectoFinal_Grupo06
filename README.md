@@ -1,2 +1,5 @@
 # ProyectoFinal
-Proyecto Final - Laboratorio de Computación Gráfica
+Proyecto Final -  Computación Gráfica
+
+316226068
+318083593
