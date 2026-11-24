@@ -66,6 +66,12 @@ void dibujarXolo(Shader& shader, GLint modelLoc,
     Model& tronco, Model& cuello, Model& cabeza, Model& cola,
     Model& pataDelIzq, Model& pataDelDer, Model& pataTrasIzq, Model& pataTrasDer);
 
+// =====================================================
+// FUNCION PARA DIBUJAR EL AJOLOTE - ZONA D
+// =====================================================
+void dibujarAjolote(Shader& shader, GLint modelLoc,
+    Model& cuerpo, Model& cabeza, Model& cola);
+
 // Dimensiones y Cámara
 const GLuint WIDTH = 1280, HEIGHT = 720;
 int SCREEN_WIDTH, SCREEN_HEIGHT;
@@ -247,6 +253,22 @@ bool XoloTrailReady = false;
 glm::vec3 XoloUltimaPosJugador(0.0f);
 bool XoloHayPosJugadorAnterior = false;
 // =====================================================
+
+
+// =====================================================
+// VARIABLES PARA LA ANIMACIÓN DEL AJOLOTE - ZONA D
+// =====================================================
+
+// Ángulos de las articulaciones
+float anguloCabezaAjolote = 0.0f;
+float anguloColaAjolote = 0.0f;
+
+// Velocidad y amplitud de los movimientos
+float amplitudCabezaAjolote = 5.0f;
+float amplitudColaAjolote = 5.0f;
+
+// Control de la animación
+float tiempoAjolote = 0.0f;
 
 
 // =========================================================================
@@ -504,6 +526,11 @@ int main()
         Model caminoD((char*)"Models/ZonaD/caminoD.obj");
         Model arbolD((char*)"Models/ZonaD/vegetacion/arbolesC.obj");
         Model deco((char*)"Models/ZonaD/deco.obj");
+        // MODELOS DEL AJOLOTE - ZONA D
+        // =====================================================
+        Model cabezaAjolote((char*)"Models/Ajolote/cabeza_ajolote.obj");
+        Model cuerpoAjolote((char*)"Models/Ajolote/cuerpo_ajolote.obj");
+        Model colaAjolote((char*)"Models/Ajolote/cola_ajolote.obj");
 
     Model ChinampaE((char*)"Models/ZonaE/ChinampaE.obj");
         Model pueblo1((char*)"Models/ZonaE/Pueblo/derecha.obj");
@@ -1005,6 +1032,11 @@ int main()
                 deco.Draw(lightingShader);
                 glUniform1i(glGetUniformLocation(lightingShader.Program, "transparency"), 0);
 
+                // AJOLOTE COMIENDO EN LA ZONA D
+                // =====================================================
+                dibujarAjolote(lightingShader, modelLoc,
+                    cuerpoAjolote, cabezaAjolote, colaAjolote);
+
         model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
@@ -1467,6 +1499,23 @@ void Animation() {
     if (glm::distance(posTraj2, destino2) < 1.0f) {
         estadoTraj2 = (estadoTraj2 == 0) ? 1 : 0;
     }
+
+
+
+
+    // =====================================================
+    // ANIMACIÓN PROCEDIMENTAL DEL AJOLOTE - ZONA D
+    // Movimiento cíclico para simular que baja la cabeza
+    // hacia el pasto y mueve suavemente la cola.
+    // =====================================================
+    tiempoAjolote = (float)glfwGetTime();
+
+    anguloCabezaAjolote =
+        sin(tiempoAjolote * 2.0f) * amplitudCabezaAjolote;
+
+    anguloColaAjolote =
+        sin(tiempoAjolote * 2.0f + 1.0f) * amplitudColaAjolote;
+
 
 
 
@@ -2337,4 +2386,45 @@ void dibujarXolo(Shader& shader, GLint modelLoc,
         glm::vec3(-0.1255f, 0.82f, -0.333f), xoloPataTrasDer, glm::vec3(1, 0, 0));
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(mPata));
     pataTrasDer.Draw(shader);
+}
+
+// =====================================================
+// DIBUJADO DEL AJOLOTE MEDIANTE MODELADO JERARQUICO
+// =====================================================
+
+void dibujarAjolote(Shader& shader, GLint modelLoc,
+    Model& cuerpo, Model& cabeza, Model& cola)
+{
+    // Matriz raíz: conserva la ubicación actual del ajolote en la Zona D.
+    glm::mat4 raiz(1.0f);
+    raiz = glm::translate(raiz, glm::vec3(164.0f, 13.8f, 84.0f));
+    raiz = glm::scale(raiz, glm::vec3(1.0f));
+
+    glUniform1i(glGetUniformLocation(shader.Program, "transparency"), 0);
+
+    // CUERPO: permanece fijo y funciona como matriz padre.
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(raiz));
+    cuerpo.Draw(shader);
+
+    // CABEZA: pivote experimental cerca de la unión con el cuerpo.
+    // Se estima que el eje X permite el gesto de bajar y levantar el hocico.
+    const glm::vec3 pivoteCabeza(0.0f, -0.30f, 0.0f);
+    glm::mat4 modeloCabeza = glm::translate(raiz, pivoteCabeza);
+    modeloCabeza = glm::rotate(modeloCabeza,
+        glm::radians(anguloCabezaAjolote), glm::vec3(1.0f, 0.0f, 0.0f));
+    modeloCabeza = glm::translate(modeloCabeza, -pivoteCabeza);
+
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modeloCabeza));
+    cabeza.Draw(shader);
+
+    // COLA: pivote experimental en la unión entre el cuerpo y la cola.
+    // El eje Z produce un balanceo lateral inicial.
+    const glm::vec3 pivoteCola(0.0f, 0.45f, 0.0f);
+    glm::mat4 modeloCola = glm::translate(raiz, pivoteCola);
+    modeloCola = glm::rotate(modeloCola,
+        glm::radians(anguloColaAjolote), glm::vec3(0.0f, 0.0f, 1.0f));
+    modeloCola = glm::translate(modeloCola, -pivoteCola);
+
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modeloCola));
+    cola.Draw(shader);
 }
